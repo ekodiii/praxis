@@ -1,0 +1,56 @@
+{
+  "id": "backend-fastapi-watchlist",
+  "title": "Backend Engineering: Movie Watchlist API",
+  "description": "Build a REST API from scratch with Python and FastAPI",
+  "version": "1.0.0",
+  "app_version_min": "0.1.0",
+  "author": "Praxis",
+
+  "runtime": {
+    "name": "python",
+    "version_min": "3.11",
+    "dependencies": ["fastapi", "uvicorn", "sqlalchemy", "pyjwt", "passlib[bcrypt]"],
+    "server_command": "uvicorn main:app --reload --port {port}",
+    "health_endpoint": "/health",
+    "default_port": 8000,
+    "clean_before_run": ["watchlist.db"]
+  },
+
+  "chapters": [
+    {
+      "id": "01-health-check",
+      "title": "Your First Endpoint: Health Check",
+      "content_file": "chapters/01-health-check.md",
+      "test_file": "tests/01-health-check.json",
+      "depends_on": null
+    },
+    {
+      "id": "02-movie-list",
+      "title": "Returning Data: The Movie List",
+      "content_file": "chapters/02-movie-list.md",
+      "test_file": "tests/02-movie-list.json",
+      "depends_on": "01-health-check"
+    },
+    {
+      "id": "03-adding-movie",
+      "title": "Creating Resources: Adding a Movie",
+      "content_file": "chapters/03-adding-movie.md",
+      "test_file": "tests/03-adding-movie.json",
+      "depends_on": "02-movie-list"
+    },
+    {
+      "id": "04-path-parameters",
+      "title": "Path Parameters: Getting a Single Movie",
+      "content_file": "chapters/04-path-parameters.md",
+      "test_file": "tests/04-path-parameters.json",
+      "depends_on": "03-adding-movie"
+    },
+    {
+      "id": "05-updating-resource",
+      "title": "Updating Resources: PATCH a Movie",
+      "content_file": "chapters/05-updating-resource.md",
+      "test_file": "tests/05-updating-resource.json",
+      "depends_on": "04-path-parameters"
+    }
+  ]
+}

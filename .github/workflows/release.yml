@@ -1,0 +1,37 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Find DMG in builds/
+        id: dmg
+        run: |
+          DMG=$(find builds/ -name "*.dmg" | sort -V | tail -1)
+          echo "path=$DMG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Praxis ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          files: ${{ steps.dmg.outputs.path }}
+          body: |
+            ## Praxis ${{ github.ref_name }}
+
+            ### Install
+            Download the `.dmg`, open it, and drag Praxis to Applications.
+
+            > macOS may show a security warning on first launch. Right-click the app and choose Open to bypass it.

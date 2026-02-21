@@ -1,0 +1,17 @@
+{
+  "chapter_id": "03-adding-movie",
+  "version": "1.0.0",
+  "setup": [],
+  "tests": [
+    {
+      "id": "post-movie-201",
+      "name": "POST /movies returns 201",
+      "request": {
+        "method": "POST",
+        "path": "/movies",
+        "body": { "title": "The Matrix", "year": 1999, "genre": "Sci-Fi" }
+      },
+      "assert": { "status": 201 }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "chapter_id": "04-path-parameters",
+  "version": "1.0.0",
+  "setup": [],
+  "tests": [
+    {
+      "id": "get-movie-404",
+      "name": "GET /movies/999 returns 404",
+      "request": { "method": "GET", "path": "/movies/999" },
+      "assert": { "status": 404 }
+    }
+  ]
+}

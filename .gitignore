@@ -1,0 +1,19 @@
+# Rust / Cargo
+src-tauri/target/
+
+# Keep builds/ tracked (pre-built release artifacts)
+!builds/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Claude project files
+.claude/
+
+# Spec and internal docs (not part of the shipped product)
+praxis-spec.md
+praxis-spec-2.md
+implementation-notes.md
+course_developer_guide.md
+CLAUDE.md

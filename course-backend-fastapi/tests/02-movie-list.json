@@ -1,0 +1,13 @@
+{
+  "chapter_id": "02-movie-list",
+  "version": "1.0.0",
+  "setup": [],
+  "tests": [
+    {
+      "id": "get-movies-200",
+      "name": "GET /movies returns 200",
+      "request": { "method": "GET", "path": "/movies" },
+      "assert": { "status": 200, "body": { "$is_array": true } }
+    }
+  ]
+}

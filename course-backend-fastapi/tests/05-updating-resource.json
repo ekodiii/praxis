@@ -1,0 +1,17 @@
+{
+  "chapter_id": "05-updating-resource",
+  "version": "1.0.0",
+  "setup": [],
+  "tests": [
+    {
+      "id": "patch-movie-404",
+      "name": "PATCH /movies/999 returns 404",
+      "request": {
+        "method": "PATCH",
+        "path": "/movies/999",
+        "body": { "watched": true }
+      },
+      "assert": { "status": 404 }
+    }
+  ]
+}

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Praxis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/bright.min.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- No-course splash (shown before any course is loaded) -->
+    <div id="no-course-screen">
+      <div id="no-course-wordmark">Praxis</div>
+      <div id="no-course-headline">Learn by building.</div>
+      <div id="no-course-sub">Load a course to get started.</div>
+      <button id="load-course-btn">[ Load Course ]</button>
+      <div id="no-course-bundled">or use the included course</div>
+    </div>
+
+    <!-- Top Bar -->
+    <header id="topbar">
+      <div id="topbar-breadcrumb">
+        <span id="crumb-praxis">PRAXIS</span>
+        <span id="crumb-sep-1" class="crumb-sep" style="display:none"> &gt; </span>
+        <span id="crumb-course" style="display:none"></span>
+        <span id="crumb-sep-2" class="crumb-sep" style="display:none"> &gt; </span>
+        <span id="crumb-chapter" style="display:none"></span>
+      </div>
+      <div id="topbar-right">
+        <button id="open-terminal-btn">[ Terminal ]</button>
+      </div>
+    </header>
+
+    <!-- Sidebar -->
+    <nav id="sidebar">
+      <div id="sidebar-header">// chapters</div>
+      <ul id="chapter-list"></ul>
+      <div id="sidebar-footer">
+        <div id="progress-label">progress</div>
+        <div id="progress-bar-ascii">—</div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main">
+      <div id="content-header">
+        <span id="content-header-spacer"></span>
+        <button id="run-tests-btn" disabled>[ Run Tests ]</button>
+      </div>
+
+      <!-- Course overview — shown after course loads, before entering course view -->
+      <div id="course-overview">
+        <div id="overview-top-row">
+          <div id="overview-eyebrow">// course</div>
+          <button id="overview-settings-btn">[ Settings ]</button>
+        </div>
+        <div id="overview-title"></div>
+        <div id="overview-description"></div>
+        <div id="overview-tech"></div>
+        <div id="overview-chapters-label">// chapters</div>
+        <ul id="overview-chapter-list"></ul>
+        <div id="overview-env-status" style="display:none">
+          <div id="overview-env-label">// environment</div>
+          <div id="overview-env-rows"></div>
+          <div id="overview-env-actions"></div>
+          <pre id="overview-env-output"></pre>
+        </div>
+        <div id="overview-actions">
+          <button id="overview-enter-btn">[ Enter Course ]</button>
+          <button id="overview-select-folder-btn">[ Select Project Folder ]</button>
+          <button id="overview-back-to-menu-btn">[ Menu ]</button>
+        </div>
+        <div id="overview-folder-path" style="display:none"></div>
+        <div id="overview-load-error" style="display:none"></div>
+      </div>
+
+      <div id="content-empty">
+        <div class="prompt-line">$ praxis start</div>
+        <div class="prompt-line active">select a chapter to begin<span class="cursor"></span></div>
+        <div class="snark">// or just go to chapter 1, it's not that complicated</div>
+      </div>
+
+      <div id="content-body" style="display:none"></div>
+
+      <button id="info-next-btn">[ Next Chapter → ]</button>
+
+      <div id="test-results">
+        <div id="test-results-header">
+          // test results
+          <span id="test-running-indicator">running...</span>
+        </div>
+        <div id="test-rows"></div>
+        <div id="server-crash-banner"></div>
+        <div id="test-summary"></div>
+        <button id="next-chapter-btn">[ Next Chapter → ]</button>
+      </div>
+    </main>
+
+    <!-- Main Menu Screen (full-screen overlay) -->
+    <div id="menu-screen">
+      <div id="menu-header">
+        <div id="menu-wordmark">PRAXIS</div>
+        <div id="menu-header-actions">
+          <button id="menu-load-course-btn">[ Load Course ]</button>
+          <button id="menu-app-settings-btn" title="App Settings">[ App Settings ]</button>
+        </div>
+      </div>
+
+      <div id="menu-body">
+        <div id="menu-recent-label">// recent</div>
+        <div id="menu-cards"></div>
+        <button id="menu-show-all-btn" style="display:none">[ Show All Courses ]</button>
+        <div id="menu-all-courses" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Course Settings slide-over -->
+    <div id="course-settings-panel" class="slide-over">
+      <div class="slide-over-header">
+        <div class="slide-over-title">// course settings</div>
+        <button class="slide-over-close" id="course-settings-close">[ x ]</button>
+      </div>
+      <div class="slide-over-body">
+        <div class="slide-over-section">
+          <div class="slide-over-label">course</div>
+          <div class="slide-over-value" id="cs-course-title"></div>
+          <div class="slide-over-sub" id="cs-course-version"></div>
+        </div>
+        <div class="slide-over-section">
+          <div class="slide-over-label">progress</div>
+          <div class="slide-over-sub" id="cs-progress-detail"></div>
+          <button class="slide-over-danger-btn" id="cs-reset-btn">[ Reset Progress ]</button>
+          <div class="slide-over-confirm" id="cs-reset-confirm" style="display:none">
+            <span class="slide-over-confirm-text">This will erase all chapter progress. Are you sure?</span>
+            <div class="slide-over-confirm-actions">
+              <button class="slide-over-danger-btn" id="cs-reset-confirm-yes">[ Yes, Reset ]</button>
+              <button class="slide-over-cancel-btn" id="cs-reset-confirm-no">[ Cancel ]</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- App Settings slide-over -->
+    <div id="app-settings-panel" class="slide-over">
+      <div class="slide-over-header">
+        <div class="slide-over-title">// app settings</div>
+        <button class="slide-over-close" id="app-settings-close">[ x ]</button>
+      </div>
+      <div class="slide-over-body">
+        <div class="slide-over-section">
+          <div class="slide-over-label">installed courses</div>
+          <div id="as-course-list"></div>
+        </div>
+        <div class="slide-over-section">
+          <div class="slide-over-label">app</div>
+          <div class="slide-over-sub">Praxis v0.1.0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide-over backdrop -->
+    <div id="slide-over-backdrop"></div>
+
+    <!-- Postman Lite Panel -->
+    <div id="postman-panel">
+
+      <!-- Toggle bar (always visible) -->
+      <div id="postman-toggle">
+        <span id="postman-toggle-arrow">▲</span>
+        <span id="postman-toggle-label">HTTP Client</span>
+        <span id="postman-toggle-hint">manual testing — click to open</span>
+        <span id="postman-port-badge"></span>
+      </div>
+
+      <!-- Panel body (hidden when collapsed) -->
+      <div id="postman-body">
+
+        <!-- Request bar -->
+        <div id="postman-request-bar">
+          <select id="postman-method">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PATCH</option>
+            <option>PUT</option>
+            <option>DELETE</option>
+          </select>
+          <input id="postman-url" type="text" placeholder="http://localhost:8000/path" spellcheck="false"
+            autocomplete="off">
+          <button id="postman-save-btn">[ Save ]</button>
+          <button id="postman-send-btn">[ Send ]</button>
+          <span id="postman-sending">sending...</span>
+        </div>
+
+        <!-- Main area: tabs + history -->
+        <div id="postman-main">
+
+          <!-- Tabs -->
+          <div id="postman-tabs-area">
+            <div id="postman-tabs">
+              <div class="ptab active" data-tab="headers">// headers</div>
+              <div class="ptab" data-tab="body">// body</div>
+              <div class="ptab" data-tab="response">// response</div>
+            </div>
+
+            <!-- Headers pane -->
+            <div class="ptab-pane active" id="ptab-headers">
+              <div id="postman-header-rows"></div>
+              <div id="postman-headers-actions">
+                <button class="header-add-btn" id="postman-add-header-btn">+ Header</button>
+                <button class="header-add-btn" id="postman-add-auth-btn">+ Auth Bearer</button>
+              </div>
+            </div>
+
+            <!-- Body pane -->
+            <div class="ptab-pane" id="ptab-body">
+              <textarea id="postman-body-textarea" placeholder='{ "key": "value" }' spellcheck="false"></textarea>
+            </div>
+
+            <!-- Response pane -->
+            <div class="ptab-pane" id="ptab-response">
+              <div id="postman-response-empty">// no response yet — send a request</div>
+              <div id="postman-response-content">
+                <div id="postman-status-line">
+                  <span id="postman-status-badge">—</span>
+                  <span id="postman-status-text"></span>
+                  <span id="postman-resp-headers-toggle">headers ▾</span>
+                </div>
+                <div id="postman-resp-headers"></div>
+                <pre id="postman-resp-body"></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- History / Saved sidebar -->
+          <div id="postman-history">
+            <div id="postman-history-tabs">
+              <div class="hist-tab active" data-hist="history">history</div>
+              <div class="hist-tab" data-hist="saved">saved</div>
+            </div>
+            <div class="hist-pane active" id="hist-history">
+              <div class="hist-empty">// no requests yet</div>
+            </div>
+            <div class="hist-pane" id="hist-saved">
+              <div class="hist-empty">// no saved requests</div>
+            </div>
+          </div>
+
+        </div><!-- /postman-main -->
+      </div><!-- /postman-body -->
+    </div><!-- /postman-panel -->
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
