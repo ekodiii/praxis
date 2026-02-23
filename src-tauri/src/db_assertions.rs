@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use regex::Regex;
 use rusqlite::{Connection, OpenFlags};
 use serde::Deserialize;
 use serde_json::Value;
@@ -31,9 +32,30 @@ pub fn evaluate_db_assertions(
     block: &DbAssertBlock,
     vars: &HashMap<String, Value>,
 ) -> Vec<String> {
-    let db_path = Path::new(project_folder).join(&block.database);
+    // Resolve the project root so we can enforce a containment boundary.
+    let project_root = match Path::new(project_folder).canonicalize() {
+        Ok(p) => p,
+        Err(e) => return vec![format!("DB: invalid project folder: {}", e)],
+    };
 
-    let conn = match Connection::open_with_flags(&db_path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
+    // Prevent path traversal: the database file must live inside the project folder.
+    let db_path = project_root.join(&block.database);
+    let db_canonical = match db_path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            // File doesn't exist yet — normalize without hitting the filesystem,
+            // then check the boundary.
+            normalize_path(&db_path)
+        }
+    };
+    if !db_canonical.starts_with(&project_root) {
+        return vec![format!(
+            "DB: database path '{}' escapes the project folder — aborting.",
+            block.database
+        )];
+    }
+
+    let conn = match Connection::open_with_flags(&db_canonical, OpenFlags::SQLITE_OPEN_READ_ONLY) {
         Ok(c) => c,
         Err(e) => {
             return vec![format!("DB: could not open '{}': {}", block.database, e)];
@@ -43,8 +65,7 @@ pub fn evaluate_db_assertions(
     let mut failures = Vec::new();
 
     for query in &block.queries {
-        let sql = interpolate(&query.sql, vars);
-        let query_failures = evaluate_query(&conn, &query.id, &sql, &query.assert);
+        let query_failures = evaluate_query(&conn, &query.id, &query.sql, &query.assert, vars);
         for f in query_failures {
             failures.push(format!("DB: {}", f));
         }
@@ -53,19 +74,77 @@ pub fn evaluate_db_assertions(
     failures
 }
 
+// Normalize a path without touching the filesystem (strips `..` and `.`).
+fn normalize_path(path: &Path) -> std::path::PathBuf {
+    use std::path::Component;
+    let mut out = std::path::PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::ParentDir => { out.pop(); }
+            Component::CurDir    => {}
+            other                => out.push(other),
+        }
+    }
+    out
+}
+
 // ── Query evaluation ──────────────────────────────────────────────────────────
 
-fn evaluate_query(conn: &Connection, id: &str, sql: &str, assert: &Value) -> Vec<String> {
+// Replace {{variable}} placeholders in SQL with `?` parameters and return the
+// ordered list of corresponding values. This prevents SQL injection: variable
+// values are never interpolated as raw SQL text.
+fn parameterize_sql(sql: &str, vars: &HashMap<String, Value>) -> (String, Vec<rusqlite::types::Value>) {
+    let re = Regex::new(r"\{\{(\w+)\}\}").expect("static regex");
+    let mut params: Vec<rusqlite::types::Value> = Vec::new();
+    let parameterized = re.replace_all(sql, |caps: &regex::Captures| {
+        let name = &caps[1];
+        let val = vars.get(name).cloned().unwrap_or(Value::Null);
+        params.push(json_to_sqlite(val));
+        "?"
+    });
+    (parameterized.into_owned(), params)
+}
+
+fn json_to_sqlite(v: Value) -> rusqlite::types::Value {
+    match v {
+        Value::Null         => rusqlite::types::Value::Null,
+        Value::Bool(b)      => rusqlite::types::Value::Integer(if b { 1 } else { 0 }),
+        Value::Number(n)    => {
+            if let Some(i) = n.as_i64() {
+                rusqlite::types::Value::Integer(i)
+            } else {
+                rusqlite::types::Value::Real(n.as_f64().unwrap_or(0.0))
+            }
+        }
+        Value::String(s)    => rusqlite::types::Value::Text(s),
+        other               => rusqlite::types::Value::Text(other.to_string()),
+    }
+}
+
+fn evaluate_query(
+    conn: &Connection,
+    id: &str,
+    sql_template: &str,
+    assert: &Value,
+    vars: &HashMap<String, Value>,
+) -> Vec<String> {
+    // Build a parameterized SQL string and collect bound values — never
+    // interpolate variable content as raw SQL text.
+    let (sql, params) = parameterize_sql(sql_template, vars);
+
     // Execute the query and collect all rows as Vec<HashMap<col_name, Value>>
-    let mut stmt = match conn.prepare(sql) {
+    let mut stmt = match conn.prepare(&sql) {
         Ok(s) => s,
         Err(e) => return vec![format!("[{}] SQL error: {}", id, e)],
     };
 
     let col_names: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
 
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
+        params.iter().map(|v| v as &dyn rusqlite::types::ToSql).collect();
+
     let rows_result: Result<Vec<HashMap<String, Value>>, _> = stmt
-        .query_map([], |row| {
+        .query_map(params_refs.as_slice(), |row| {
             let mut map = HashMap::new();
             for (i, col) in col_names.iter().enumerate() {
                 let val: Value = match row.get_ref(i) {
@@ -210,17 +289,3 @@ fn evaluate_query(conn: &Connection, id: &str, sql: &str, assert: &Value) -> Vec
     failures
 }
 
-// ── Variable interpolation ────────────────────────────────────────────────────
-
-fn interpolate(s: &str, vars: &HashMap<String, Value>) -> String {
-    let mut result = s.to_string();
-    for (k, v) in vars {
-        let placeholder = format!("{{{{{}}}}}", k);
-        let replacement = match v {
-            Value::String(s) => s.clone(),
-            other => other.to_string(),
-        };
-        result = result.replace(&placeholder, &replacement);
-    }
-    result
-}

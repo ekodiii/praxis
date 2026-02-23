@@ -186,7 +186,18 @@ fn send_request(
 
     let resp = builder.send().map_err(|e| format!("Request failed: {}", e))?;
     let status = resp.status().as_u16();
-    let body: Value = resp.json().unwrap_or(Value::Null);
+
+    // Read the raw bytes first so we can attempt JSON, then fall back to text.
+    // This prevents cryptic "expected X got null" failures when the student's
+    // server returns a non-JSON body (plain text, HTML error pages, etc.).
+    let raw = resp.bytes().unwrap_or_default();
+    let body: Value = if raw.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_slice(&raw).unwrap_or_else(|_| {
+            Value::String(String::from_utf8_lossy(&raw).trim().to_string())
+        })
+    };
 
     Ok(Response { status, body })
 }
@@ -449,6 +460,24 @@ fn json_type_name(v: &Value) -> &'static str {
     }
 }
 
+// ── Path safety ───────────────────────────────────────────────────────────────
+
+// Normalize a path without touching the filesystem (handles `..` and `.`).
+// Used when the target path may not exist yet (so canonicalize() would fail),
+// but we still need to check for directory traversal.
+fn normalize_path(path: &Path) -> std::path::PathBuf {
+    use std::path::Component;
+    let mut out = std::path::PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::ParentDir => { out.pop(); }
+            Component::CurDir    => {}
+            other                => out.push(other),
+        }
+    }
+    out
+}
+
 // ── Port utility ──────────────────────────────────────────────────────────────
 
 pub fn find_free_port(start: u16) -> Result<u16, PraxisError> {
@@ -480,11 +509,35 @@ pub fn run_chapter_tests(
     // 1. Stop any existing sandboxed server
     server::stop(Arc::clone(&server_state));
 
-    // 2. Delete clean_before_run files
+    // 2. Delete clean_before_run files — canonicalize to prevent path traversal.
+    let project_root = Path::new(project_folder)
+        .canonicalize()
+        .map_err(|e| PraxisError::Other(format!("Invalid project folder: {}", e)))?;
+
     for rel_path in clean_before_run {
-        let full = Path::new(project_folder).join(rel_path);
-        if full.exists() {
-            fs::remove_file(&full)?;
+        let full = project_root.join(rel_path);
+        // Resolve symlinks and `..` segments, then assert the result is inside
+        // the project folder. If the path doesn't exist yet we can't canonicalize
+        // it, so we normalize without resolving (strip `..` manually).
+        let safe = match full.canonicalize() {
+            Ok(canonical) => canonical,
+            Err(_) => {
+                // Path doesn't exist — still normalize to catch `..` escapes.
+                normalize_path(&full)
+            }
+        };
+        if !safe.starts_with(&project_root) {
+            return Err(PraxisError::Other(format!(
+                "clean_before_run path '{}' escapes the project folder — aborting.",
+                rel_path
+            )));
+        }
+        if safe.exists() {
+            if safe.is_dir() {
+                fs::remove_dir_all(&safe)?;
+            } else {
+                fs::remove_file(&safe)?;
+            }
         }
     }
 
