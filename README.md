@@ -6,7 +6,7 @@ I find the most frustating aspect of the current state of coding education is th
 
 But learning how to truly build something is hard. To step from "Hello World" to making apps is such a crazy transition, one that can only be bridged with practical experience (hence Praxis). I firmly believe learning to code in a browser is capital S STUPID. Learning should be done in the environment one works, with the tools they work with. It's why internships exist, it's why on-the-job training exists, it's there are college students I know with perfect As in every coding class but still can't make a single thing.
 
-Thus the app was born. Locally run tests, with the freedom to develop setup and test code however you please. A platform for 
+Thus the app was born. Locally run tests, with the freedom to develop, setup, and test code however you please.
 
 > This project is currently in **alpha**. I'm working on it don't worry.
 
@@ -27,7 +27,7 @@ xattr -cr /Applications/Praxis.app
 
 ## Requirements
 
-- macOS (Apple Silicon) *I said I'm working on it*
+- macOS (Apple Silicon) *More coming soon I said I'm working on it*
 - Whatever you write code on (VSCode, Jetbrains, Xcode, Vim, notepad, anything really)
 
 ---
